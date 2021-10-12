@@ -94,6 +94,10 @@ if [ ! "$gpu" = "nvidia" ] && [ ! "$gpu" = "mesa" ]; then
 fi
 
 
+if [ $prebuild -eq 1 ]; then
+    ./prebuild-docker.sh -t $time_zone -p $prefix -g $gpu
+fi
+
 if [ $gpu = "nvidia" ]; then
     image_l=${prefix}_nvidia-cuda11.1-cudnn8-devel-glvnd-runtime-ros-base-ubuntu20.04
     image_p=${prefix}_nvidia-cuda11.1-cudnn8-devel-glvnd-runtime-ros-base-realsense-ubuntu20.04
@@ -150,10 +154,6 @@ fi
 
 
 if [ "$target" = "ros2" ] || [ "$target" = "all" ]; then
-    if [ $prebuild -eq 1 ]; then
-	./prebuild.sh -t $time_zone -p $prefix -g $gpu
-    fi
-
     if [ $gpu = "nvidia" ]; then
 	image_n=${prefix}_galactic-ros-desktop-nav2-focal
     fi
