@@ -41,6 +41,7 @@ function help {
     echo "-t <time_zone>        set time zone"
     echo "-d                    debug without BUILDKIT"
     echo "-p                    project name"
+    echo "-g nvidia|mesa        use NVidia / Mesa GPU"
 }
 
 pwd=`pwd`
@@ -48,6 +49,7 @@ prefix=`basename $pwd`
 DIR=$pwd/prebuild
 option="--progress=tty"
 time_zone=`cat /etc/timezone`
+gpu=nvidia
 
 export DOCKER_BUILDKIT=1
 export DEBUG_FLAG="--cmake-args -DCMAKE_BUILD_TYPE=RelWithDebInfo"
@@ -56,29 +58,7 @@ export OVERLAY_MIXINS="rel-with-deb-info"
 debug_ros2="--build-arg DEBUG_FLAG"
 debug_nav2="--build-arg UNDERLAY_MIXINS --build-arg OVERLAY_MIXINS"
 
-CUDAV=11.1
-CUDNNV=8
-# See required NVIDIA driver version for CUDA here
-# https://docs.nvidia.com/deploy/cuda-compatibility/
-REQUIRED_DRIVERV=450.80.02
-
-DRIVERV=`nvidia-smi | grep "Driver"`
-re=".*Driver Version: ([0-9\.]+) .*"
-if [[ $DRIVERV =~ $re ]];then
-    DRIVERV=${BASH_REMATCH[1]}
-    echo "NVDIA driver version $DRIVERV is found"
-    if $(dpkg --compare-versions $DRIVERV ge $REQUIRED_DRIVERV); then
-        echo "Installed NVIDIA driver satisfies the required version $REQUIRED_DRIVERV"
-    else
-        red "Installed NVIDIA driver does not satisfy the required version $REQUIRED_DRIVERV"
-        exit
-    fi
-else
-    red "NVIDIA driver is not found by nvidia-smi command"
-    exit
-fi
-
-while getopts "hqnt:c:u:dp:" arg; do
+while getopts "hqnt:c:u:dp:g:" arg; do
     case $arg in
 	h)
 	    help
@@ -99,6 +79,9 @@ while getopts "hqnt:c:u:dp:" arg; do
 	p)
 	    prefix=$OPTARG
 	    ;;
+	g)
+	    gpu=$OPTARG
+	    ;;
     esac
 done
 
@@ -108,9 +91,38 @@ if [ "$target" = "" ]; then
     target=all
 fi
 
+if [ ! "$gpu" = "nvidia" ] && [ ! "$gpu" = "mesa" ]; then
+    red "You need to specify -g nvidia or mesa"
+    exit
+fi
 
-blue "CUDA Vesrion: $CUDAV"
-blue "cudnn Vesrion: $CUDNNV"
+CUDAV=11.1
+CUDNNV=8
+if [ $gpu = "nvidia" ]; then
+    # See required NVIDIA driver version for CUDA here
+    # https://docs.nvidia.com/deploy/cuda-compatibility/
+    REQUIRED_DRIVERV=450.80.02
+    
+    DRIVERV=`nvidia-smi | grep "Driver"`
+    re=".*Driver Version: ([0-9\.]+) .*"
+    if [[ $DRIVERV =~ $re ]];then
+	DRIVERV=${BASH_REMATCH[1]}
+	echo "NVDIA driver version $DRIVERV is found"
+	if $(dpkg --compare-versions $DRIVERV ge $REQUIRED_DRIVERV); then
+            echo "Installed NVIDIA driver satisfies the required version $REQUIRED_DRIVERV"
+	else
+            red "Installed NVIDIA driver does not satisfy the required version $REQUIRED_DRIVERV"
+            exit
+	fi
+    else
+	red "NVIDIA driver is not found by nvidia-smi command"
+	red "If you don't have NVIDIA GPU, please run '$0 -g mesa'"
+	exit
+    fi
+    blue "CUDA Vesrion: $CUDAV"
+    blue "cudnn Vesrion: $CUDNNV"
+fi
+
 blue "TIME_ZONE=$time_zone"
 read -p "Press enter to continue"
 
@@ -146,6 +158,23 @@ if [ $target = "nav2" ] || [ $target = "all" ]; then
     popd
 fi
 
+if [ $gpu = "mesa" ] && [ $target = "all" ]; then
+    echo ""
+    blue "# build ${prefix}_navigation2-mesa"
+    pushd $DIR/mesa
+    docker build -t ${prefix}_galactic-ros-desktop-nav2-focal-mesa \
+	   --build-arg TZ=$time_zone \
+	   --build-arg FROM_IMAGE=${prefix}_galactic-ros-desktop-nav2-focal \
+	   $option $debug_nav2 \
+	   .
+    if [ $? -ne 0 ]; then
+	red "failed to build navigation2-mesa"
+	exit
+    fi
+    popd
+fi
+
+
 function build_cuda_ros_image() {
     local CUDAV=$1
     local CUDNNV=$2
@@ -153,49 +182,95 @@ function build_cuda_ros_image() {
     local UBUNTU_DISTRO=$4
     local ROS_DISTRO=$5
 
-    echo ""
-    blue "# build ${prefix}_nvidia-cuda$CUDAV-cudnn$CUDNNV-devel-glvnd-runtime-ubuntu$UBUNTUV"
-    pushd $DIR/opengl/glvnd/runtime/
-    docker build -t ${prefix}_nvidia-cuda$CUDAV-cudnn$CUDNNV-devel-glvnd-runtime-ubuntu$UBUNTUV \
-        --build-arg from=nvidia/cuda:$CUDAV-cudnn$CUDNNV-devel-ubuntu$UBUNTUV \
-        --build-arg LIBGLVND_VERSION=v1.1.0 \
-        $option \
-        . 
-    if [ $? -ne 0 ]; then
-        red "failed to build glvnd"
-        exit
+    if [ $gpu = "nvidia" ]; then
+	echo ""
+	blue "# build ${prefix}_nvidia-cuda$CUDAV-cudnn$CUDNNV-devel-glvnd-runtime-ubuntu$UBUNTUV"
+	pushd $DIR/opengl/glvnd/runtime/
+	docker build -t ${prefix}_nvidia-cuda$CUDAV-cudnn$CUDNNV-devel-glvnd-runtime-ubuntu$UBUNTUV \
+               --build-arg from=nvidia/cuda:$CUDAV-cudnn$CUDNNV-devel-ubuntu$UBUNTUV \
+               --build-arg LIBGLVND_VERSION=v1.1.0 \
+               $option \
+               . 
+	if [ $? -ne 0 ]; then
+            red "failed to build glvnd"
+            exit
+	fi
+	popd
+	
+	echo ""
+	blue "# build ${prefix}_nvidia-cuda$CUDAV-cudnn$CUDNNV-devel-glvnd-runtime-ros-core-ubuntu$UBUNTUV"
+	pushd $DIR/docker_images/ros/$ROS_DISTRO/ubuntu/$UBUNTU_DISTRO/ros-core/
+	sed s/ubuntu:$UBUNTU_DISTRO/nvidia-cuda$CUDAV-cudnn$CUDNNV-devel-glvnd-runtime-ubuntu$UBUNTUV/ Dockerfile \
+            > Dockerfile.CUDA$CUDAV &&\
+            docker build -f Dockerfile.CUDA$CUDAV \
+		   -t ${prefix}_nvidia-cuda$CUDAV-cudnn$CUDNNV-devel-glvnd-runtime-ros-core-ubuntu$UBUNTUV \
+		   $option \
+		   .
+	if [ $? -ne 0 ]; then
+            red "failed to build ros-core"
+            exit
+	fi
+	popd
+	
+	echo ""
+	blue "# build ${prefix}_nvidia-cuda$CUDAV-cudnn$CUDNNV-devel-glvnd-runtime-ros-base-ubuntu$UBUNTUV"
+	pushd $DIR/docker_images/ros/$ROS_DISTRO/ubuntu/$UBUNTU_DISTRO/ros-base/
+	sed s/ros:$ROS_DISTRO-ros-core-$UBUNTU_DISTRO/nvidia-cuda$CUDAV-cudnn$CUDNNV-devel-glvnd-runtime-ros-core-ubuntu$UBUNTUV/ Dockerfile \
+            > Dockerfile.CUDA$CUDAV &&\
+            docker build -f Dockerfile.CUDA$CUDAV \
+		   -t ${prefix}_nvidia-cuda$CUDAV-cudnn$CUDNNV-devel-glvnd-runtime-ros-base-ubuntu$UBUNTUV \
+		   $option \
+		   .
+	if [ $? -ne 0 ]; then
+            red "failed to build ros-core"
+            exit
+	fi
+	popd
+    else
+	echo ""
+	blue "# build ${prefix}_ros-core-ubuntu$UBUNTUV"
+	pushd $DIR/docker_images/ros/$ROS_DISTRO/ubuntu/$UBUNTU_DISTRO/ros-core/
+        docker build -f Dockerfile \
+	       -t ${prefix}_ros-core-ubuntu$UBUNTUV \
+	       $option \
+	       .
+	if [ $? -ne 0 ]; then
+            red "failed to build ros-core"
+            exit
+	fi
+	popd
+	
+	echo ""
+	blue "# build ${prefix}_ros-base-ubuntu$UBUNTUV"
+	pushd $DIR/docker_images/ros/$ROS_DISTRO/ubuntu/$UBUNTU_DISTRO/ros-base/
+	sed s/ros:$ROS_DISTRO-ros-core-$UBUNTU_DISTRO/${prefix}_ros-core-ubuntu$UBUNTUV/ Dockerfile \
+            > Dockerfile.mesa &&\
+            docker build -f Dockerfile.mesa \
+		   -t ${prefix}_ros-base-ubuntu$UBUNTUV \
+		   $option \
+		   .
+	if [ $? -ne 0 ]; then
+            red "failed to build ros-core"
+            exit
+	fi
+	popd
+	
+	echo ""
+	blue "# build ${prefix}_ros-base-mesa-ubuntu$UBUNTUV"
+	pushd $DIR/mesa
+	docker build -t ${prefix}_ros-base-mesa-ubuntu$UBUNTUV \
+	       --build-arg TZ=$time_zone \
+	       --build-arg FROM_IMAGE=${prefix}_ros-base-ubuntu$UBUNTUV \
+	       $option $debug_nav2 \
+	       .
+	if [ $? -ne 0 ]; then
+	    red "failed to build focal mesa"
+	    exit
+	fi
+	popd
+	
     fi
-    popd
 
-    echo ""
-    blue "# build ${prefix}_nvidia-cuda$CUDAV-cudnn$CUDNNV-devel-glvnd-runtime-ros-core-ubuntu$UBUNTUV"
-    pushd $DIR/docker_images/ros/$ROS_DISTRO/ubuntu/$UBUNTU_DISTRO/ros-core/
-    sed s/ubuntu:$UBUNTU_DISTRO/nvidia-cuda$CUDAV-cudnn$CUDNNV-devel-glvnd-runtime-ubuntu$UBUNTUV/ Dockerfile \
-        > Dockerfile.CUDA$CUDAV &&\
-        docker build -f Dockerfile.CUDA$CUDAV \
-        -t ${prefix}_nvidia-cuda$CUDAV-cudnn$CUDNNV-devel-glvnd-runtime-ros-core-ubuntu$UBUNTUV \
-        $option \
-        .
-    if [ $? -ne 0 ]; then
-        red "failed to build ros-core"
-        exit
-    fi
-    popd
-
-    echo ""
-    blue "# build ${prefix}_nvidia-cuda$CUDAV-cudnn$CUDNNV-devel-glvnd-runtime-ros-base-ubuntu$UBUNTUV"
-    pushd $DIR/docker_images/ros/$ROS_DISTRO/ubuntu/$UBUNTU_DISTRO/ros-base/
-    sed s/ros:$ROS_DISTRO-ros-core-$UBUNTU_DISTRO/nvidia-cuda$CUDAV-cudnn$CUDNNV-devel-glvnd-runtime-ros-core-ubuntu$UBUNTUV/ Dockerfile \
-        > Dockerfile.CUDA$CUDAV &&\
-        docker build -f Dockerfile.CUDA$CUDAV \
-        -t ${prefix}_nvidia-cuda$CUDAV-cudnn$CUDNNV-devel-glvnd-runtime-ros-base-ubuntu$UBUNTUV \
-        $option \
-        .
-    if [ $? -ne 0 ]; then
-        red "failed to build ros-core"
-        exit
-    fi
-    popd
 }
 
 function build_cuda_ros_realsense_image() {
@@ -227,17 +302,13 @@ function build_cuda_ros_realsense_image() {
 }
 
 
-if [ $target = "xenial" ] || [ $target = "all" ]; then
-    UBUNTUV=16.04
-    UBUNTU_DISTRO=xenial
-    ROS_DISTRO=kinetic
-    build_cuda_ros_image $CUDAV $CUDNNV $UBUNTUV $UBUNTU_DISTRO $ROS_DISTRO
-fi
-
 if [ $target = "focal" ] || [ $target = "all" ]; then
     UBUNTUV=20.04
     UBUNTU_DISTRO=focal
     ROS_DISTRO=noetic
     build_cuda_ros_image $CUDAV $CUDNNV $UBUNTUV $UBUNTU_DISTRO $ROS_DISTRO
-    build_cuda_ros_realsense_image $CUDAV $CUDNNV $UBUNTUV $UBUNTU_DISTRO $ROS_DISTRO
+
+    if [ $gpu = "nvidia" ]; then
+	build_cuda_ros_realsense_image $CUDAV $CUDNNV $UBUNTUV $UBUNTU_DISTRO $ROS_DISTRO
+    fi
 fi

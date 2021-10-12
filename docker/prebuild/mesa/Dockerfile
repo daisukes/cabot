@@ -1,5 +1,6 @@
 ARG FROM_IMAGE=ubuntu
 FROM $FROM_IMAGE
+ENV DEBIAN_FRONTEND="noninteractive"
 
 RUN apt update && \
 	apt install -y \

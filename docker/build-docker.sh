@@ -39,6 +39,7 @@ function help {
     echo "-p                    project name"
     echo "-P                    prebuild"
     echo "-n                    no cache"
+    echo "-g nvidia|mesa        use NVidia / Mesa GPU"
 }
 
 time_zone=`cat /etc/timezone`
@@ -47,11 +48,12 @@ option="--progress=tty"
 debug=0
 pwd=`pwd`
 prefix=`basename $pwd`
+gpu=nvidia
 
 export DOCKER_BUILDKIT=1
 export COMPOSE_DOCKER_CLI_BUILD=1
 
-while getopts "ht:p:Pndc:" arg; do
+while getopts "ht:p:Pndc:g:" arg; do
     case $arg in
 	h)
 	    help
@@ -75,6 +77,9 @@ while getopts "ht:p:Pndc:" arg; do
 	d)
 	    debug=1
 	    ;;
+	g)
+	    gpu=$OPTARG
+	    ;;
     esac
 done
 shift $((OPTIND-1))
@@ -83,20 +88,30 @@ if [ "$target" = "" ]; then
     target=all
 fi
 
-image_l=${prefix}_nvidia-cuda11.1-cudnn8-devel-glvnd-runtime-ros-base-ubuntu20.04
-image_p=${prefix}_nvidia-cuda11.1-cudnn8-devel-glvnd-runtime-ros-base-realsense-ubuntu20.04
-if [ $target = "people" ] || [ $target = "all" ]; then
-    if [ `docker images | grep $image_p | wc -l` = 0 ]; then
-	red "You are trying to build with CUDA$CUDAV, but cannot find the corresponding images"
-	echo " - $image_p"
-	echo ""
-	red "You need to run ./prebuild.sh -c <CUDA version string like '10.1'> first"
-	echo " Please check your CUDA version"
-	blue "`nvidia-smi | grep CUDA`"
-	echo ""
-	help
-	exit
-    fi	
+if [ ! "$gpu" = "nvidia" ] && [ ! "$gpu" = "mesa" ]; then
+    red "You need to specify -g nvidia or mesa"
+    exit
+fi
+
+
+if [ $gpu = "nvidia" ]; then
+    image_l=${prefix}_nvidia-cuda11.1-cudnn8-devel-glvnd-runtime-ros-base-ubuntu20.04
+    image_p=${prefix}_nvidia-cuda11.1-cudnn8-devel-glvnd-runtime-ros-base-realsense-ubuntu20.04
+    if [ $target = "people" ] || [ $target = "all" ]; then
+	if [ `docker images | grep $image_p | wc -l` = 0 ]; then
+	    red "You are trying to build with CUDA$CUDAV, but cannot find the corresponding images"
+	    echo " - $image_p"
+	    echo ""
+	    red "You need to run ./prebuild.sh -c <CUDA version string like '10.1'> first"
+	    echo " Please check your CUDA version"
+	    blue "`nvidia-smi | grep CUDA`"
+	    echo ""
+	    help
+	    exit
+	fi	
+    fi
+else
+    image_l=${prefix}_ros-base-mesa-ubuntu20.04
 fi
 
 
@@ -138,8 +153,14 @@ if [ "$target" = "ros2" ] || [ "$target" = "all" ]; then
     if [ $prebuild -eq 1 ]; then
 	./prebuild.sh -t $time_zone
     fi
-    
-    image_n=${prefix}_galactic-ros-desktop-nav2-focal
+
+    if [ $gpu = "nvidia" ]; then
+	image_n=galactic-ros-desktop-nav2-focal
+    fi
+    if [ $gpu = "mesa" ]; then
+	image_n=galactic-ros-desktop-nav2-focal-mesa
+    fi
+
     if [ `docker images | grep $image_n | wc -l` = 0 ]; then
 	red "cannot find the corresponding images"
 	echo " - $image_n"
@@ -205,21 +226,23 @@ if [ $target = "localization" ] || [ $target = "all" ]; then
 fi
 
 
-if [ $target = "people" ] || [ $target = "all" ]; then
-    docker-compose -p ${prefix} build \
-		   --build-arg FROM_IMAGE=$image_p \
-		   --build-arg UID=$UID \
-		   --build-arg TZ=$time_zone \
-		   $option \
-		   people
-    if [ $? != 0 ]; then
-	red "Got an error to build people"
-	exit
-    fi
-    docker-compose -p ${prefix} run people /launch.sh build
-    if [ $? != 0 ]; then
-	red "Got an error to build people ws"
-	exit
+if [ $gpu = "nvidia" ]; then
+    if [ $target = "people" ] || [ $target = "all" ]; then
+	docker-compose -p ${prefix} build \
+		       --build-arg FROM_IMAGE=$image_p \
+		       --build-arg UID=$UID \
+		       --build-arg TZ=$time_zone \
+		       $option \
+		       people
+	if [ $? != 0 ]; then
+	    red "Got an error to build people"
+	    exit
+	fi
+	docker-compose -p ${prefix} run people /launch.sh build
+	if [ $? != 0 ]; then
+	    red "Got an error to build people ws"
+	    exit
+	fi
     fi
 fi
 
