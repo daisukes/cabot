@@ -151,7 +151,7 @@ fi
 
 if [ "$target" = "ros2" ] || [ "$target" = "all" ]; then
     if [ $prebuild -eq 1 ]; then
-	./prebuild.sh -t $time_zone
+	./prebuild.sh -t $time_zone -p $prefix -g $gpu
     fi
 
     if [ $gpu = "nvidia" ]; then
