@@ -73,6 +73,6 @@ if(CATKIN_ENABLE_TESTING)
   add_rostest(test/test_menu_action.test)
   add_rostest(test/test_tts.test)	
   add_rostest(test/test_cabot_ui_manager.test)
-  add_rostest(test/test_geolibs.test)	
+#  add_rostest(test/test_geolibs.test)	
 endif()
 

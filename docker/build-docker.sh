@@ -117,7 +117,9 @@ fi
 
 
 if [ "$target" = "bridge" ] || [ "$target" = "all" ]; then
-    cmd="docker-compose -p ${prefix} build $option --build-arg UID=$UID --build-arg TZ=$time_zone bridge"
+
+    image_b=${prefix}_galactic-ros-desktop-nav2-focal
+    cmd="docker-compose -p ${prefix} build $option --build-arg UID=$UID --build-arg TZ=$time_zone --build-arg FROM_IMAGE=$image_b bridge"
     blue $cmd
     eval $cmd
     if [ $? != 0 ]; then
@@ -137,7 +139,7 @@ if [ "$target" = "ros2" ] || [ "$target" = "all" ]; then
 	./prebuild.sh -t $time_zone
     fi
     
-    image_n=galactic-ros-desktop-nav2-focal
+    image_n=${prefix}_galactic-ros-desktop-nav2-focal
     if [ `docker images | grep $image_n | wc -l` = 0 ]; then
 	red "cannot find the corresponding images"
 	echo " - $image_n"
@@ -147,7 +149,7 @@ if [ "$target" = "ros2" ] || [ "$target" = "all" ]; then
 	exit
     fi
 
-    cmd="docker-compose -p ${prefix} build $option --build-arg UID=$UID --build-arg TZ=$time_zone ros2"
+    cmd="docker-compose -p ${prefix} build $option --build-arg UID=$UID --build-arg TZ=$time_zone --build-arg FROM_IMAGE=$image_n ros2"
     blue $cmd
     eval $cmd
     if [ $? != 0 ]; then
