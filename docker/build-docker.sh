@@ -155,10 +155,10 @@ if [ "$target" = "ros2" ] || [ "$target" = "all" ]; then
     fi
 
     if [ $gpu = "nvidia" ]; then
-	image_n=galactic-ros-desktop-nav2-focal
+	image_n=${prefix}_galactic-ros-desktop-nav2-focal
     fi
     if [ $gpu = "mesa" ]; then
-	image_n=galactic-ros-desktop-nav2-focal-mesa
+	image_n=${prefix}_galactic-ros-desktop-nav2-focal-mesa
     fi
 
     if [ `docker images | grep $image_n | wc -l` = 0 ]; then
