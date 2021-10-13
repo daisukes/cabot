@@ -200,7 +200,7 @@ function build_cuda_ros_image() {
 	echo ""
 	blue "# build ${prefix}_nvidia-cuda$CUDAV-cudnn$CUDNNV-devel-glvnd-runtime-ros-core-ubuntu$UBUNTUV"
 	pushd $DIR/docker_images/ros/$ROS_DISTRO/ubuntu/$UBUNTU_DISTRO/ros-core/
-	sed s/ubuntu:$UBUNTU_DISTRO/nvidia-cuda$CUDAV-cudnn$CUDNNV-devel-glvnd-runtime-ubuntu$UBUNTUV/ Dockerfile \
+	sed s/ubuntu:$UBUNTU_DISTRO/${prefix}_nvidia-cuda$CUDAV-cudnn$CUDNNV-devel-glvnd-runtime-ubuntu$UBUNTUV/ Dockerfile \
             > Dockerfile.CUDA$CUDAV &&\
             docker build -f Dockerfile.CUDA$CUDAV \
 		   -t ${prefix}_nvidia-cuda$CUDAV-cudnn$CUDNNV-devel-glvnd-runtime-ros-core-ubuntu$UBUNTUV \
@@ -215,7 +215,7 @@ function build_cuda_ros_image() {
 	echo ""
 	blue "# build ${prefix}_nvidia-cuda$CUDAV-cudnn$CUDNNV-devel-glvnd-runtime-ros-base-ubuntu$UBUNTUV"
 	pushd $DIR/docker_images/ros/$ROS_DISTRO/ubuntu/$UBUNTU_DISTRO/ros-base/
-	sed s/ros:$ROS_DISTRO-ros-core-$UBUNTU_DISTRO/nvidia-cuda$CUDAV-cudnn$CUDNNV-devel-glvnd-runtime-ros-core-ubuntu$UBUNTUV/ Dockerfile \
+	sed s/ros:$ROS_DISTRO-ros-core-$UBUNTU_DISTRO/${prefix}_nvidia-cuda$CUDAV-cudnn$CUDNNV-devel-glvnd-runtime-ros-core-ubuntu$UBUNTUV/ Dockerfile \
             > Dockerfile.CUDA$CUDAV &&\
             docker build -f Dockerfile.CUDA$CUDAV \
 		   -t ${prefix}_nvidia-cuda$CUDAV-cudnn$CUDNNV-devel-glvnd-runtime-ros-base-ubuntu$UBUNTUV \
@@ -289,7 +289,7 @@ function build_cuda_ros_realsense_image() {
     #pushd $DIR/../  ## this is not good, because docker build context is too big
     pushd $DIR/realsense
     docker build -t ${prefix}_nvidia-cuda$CUDAV-cudnn$CUDNNV-devel-glvnd-runtime-ros-base-realsense-ubuntu$UBUNTUV \
-        --build-arg from=nvidia-cuda$CUDAV-cudnn$CUDNNV-devel-glvnd-runtime-ros-base-ubuntu$UBUNTUV \
+        --build-arg from=${prefix}_nvidia-cuda$CUDAV-cudnn$CUDNNV-devel-glvnd-runtime-ros-base-ubuntu$UBUNTUV \
         --build-arg ROS_DISTRO=$ROS_DISTRO \
         --build-arg UBUNTU_DISTRO=$UBUNTU_DISTRO \
         $option \
