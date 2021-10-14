@@ -99,8 +99,8 @@ if [ $prebuild -eq 1 ]; then
 fi
 
 if [ $gpu = "nvidia" ]; then
-    image_l=${prefix}_nvidia-cuda11.1-cudnn8-devel-glvnd-runtime-ros-base-ubuntu20.04
-    image_p=${prefix}_nvidia-cuda11.1-cudnn8-devel-glvnd-runtime-ros-base-realsense-ubuntu20.04
+    image_l=${prefix}_nvidia-cuda11.1-cudnn8-devel-ros-base-ubuntu20.04
+    image_p=${prefix}_nvidia-cuda11.1-cudnn8-devel-ros-base-realsense-ubuntu20.04
     if [ $target = "people" ] || [ $target = "all" ]; then
 	if [ `docker images | grep $image_p | wc -l` = 0 ]; then
 	    red "You are trying to build with CUDA$CUDAV, but cannot find the corresponding images"
