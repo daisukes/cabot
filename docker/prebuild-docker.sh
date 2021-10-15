@@ -175,108 +175,53 @@ if [ $gpu = "mesa" ] && [ $target = "all" ]; then
 fi
 
 
-function build_cuda_ros_image() {
-    local CUDAV=$1
-    local CUDNNV=$2
+function build_ros_base_image() {
+    local FROM_IMAGE=$1
+    local IMAGE_TAG_PREFIX=$2
     local UBUNTUV=$3
     local UBUNTU_DISTRO=$4
     local ROS_DISTRO=$5
-
-    if [ $gpu = "nvidia" ]; then
-	
-	echo ""
-	blue "# build ${prefix}_nvidia-cuda$CUDAV-cudnn$CUDNNV-devel-ros-core-ubuntu$UBUNTUV"
-	pushd $DIR/docker_images/ros/$ROS_DISTRO/ubuntu/$UBUNTU_DISTRO/ros-core/
-	sed s/ubuntu:$UBUNTU_DISTRO/nvidia\\/cuda:$CUDAV-cudnn$CUDNNV-devel-ubuntu$UBUNTUV/ Dockerfile \
-            > Dockerfile.CUDA$CUDAV &&\
-            docker build -f Dockerfile.CUDA$CUDAV \
-		   -t ${prefix}_nvidia-cuda$CUDAV-cudnn$CUDNNV-devel-ros-core-ubuntu$UBUNTUV \
-		   $option \
-		   .
-	if [ $? -ne 0 ]; then
-            red "failed to build ros-core"
-            exit
-	fi
-	popd
-	
-	echo ""
-	blue "# build ${prefix}_nvidia-cuda$CUDAV-cudnn$CUDNNV-devel-ros-base-ubuntu$UBUNTUV"
-	pushd $DIR/docker_images/ros/$ROS_DISTRO/ubuntu/$UBUNTU_DISTRO/ros-base/
-	sed s/ros:$ROS_DISTRO-ros-core-$UBUNTU_DISTRO/${prefix}_nvidia-cuda$CUDAV-cudnn$CUDNNV-devel-ros-core-ubuntu$UBUNTUV/ Dockerfile \
-            > Dockerfile.CUDA$CUDAV &&\
-            docker build -f Dockerfile.CUDA$CUDAV \
-		   -t ${prefix}_nvidia-cuda$CUDAV-cudnn$CUDNNV-devel-ros-base-ubuntu$UBUNTUV \
-		   $option \
-		   .
-	if [ $? -ne 0 ]; then
-            red "failed to build ros-core"
-            exit
-	fi
-	popd
-    else
-	echo ""
-	blue "# build ${prefix}_ros-core-ubuntu$UBUNTUV"
-	pushd $DIR/docker_images/ros/$ROS_DISTRO/ubuntu/$UBUNTU_DISTRO/ros-core/
-        docker build -f Dockerfile \
-	       -t ${prefix}_ros-core-ubuntu$UBUNTUV \
-	       $option \
-	       .
-	if [ $? -ne 0 ]; then
-            red "failed to build ros-core"
-            exit
-	fi
-	popd
-	
-	echo ""
-	blue "# build ${prefix}_ros-base-ubuntu$UBUNTUV"
-	pushd $DIR/docker_images/ros/$ROS_DISTRO/ubuntu/$UBUNTU_DISTRO/ros-base/
-	sed s/ros:$ROS_DISTRO-ros-core-$UBUNTU_DISTRO/${prefix}_ros-core-ubuntu$UBUNTUV/ Dockerfile \
-            > Dockerfile.mesa &&\
-            docker build -f Dockerfile.mesa \
-		   -t ${prefix}_ros-base-ubuntu$UBUNTUV \
-		   $option \
-		   .
-	if [ $? -ne 0 ]; then
-            red "failed to build ros-core"
-            exit
-	fi
-	popd
-	
-	echo ""
-	blue "# build ${prefix}_ros-base-mesa-ubuntu$UBUNTUV"
-	pushd $DIR/mesa
-	docker build -t ${prefix}_ros-base-mesa-ubuntu$UBUNTUV \
-	       --build-arg TZ=$time_zone \
-	       --build-arg FROM_IMAGE=${prefix}_ros-base-ubuntu$UBUNTUV \
-	       $option $debug_nav2 \
-	       .
-	if [ $? -ne 0 ]; then
-	    red "failed to build focal mesa"
-	    exit
-	fi
-	popd
-	
-    fi
-
-}
-
-function build_cuda_ros_realsense_image() {
-    local CUDAV=$1
-    local CUDNNV=$2
-    local UBUNTUV=$3
-    local UBUNTU_DISTRO=$4
-    local ROS_DISTRO=$5
-
-    blue "CUDA Vesrion: $CUDAV"
-    blue "cudnn Vesrion: $CUDNNV"
-    blue "Ubuntu Version: $UBUNTUV"
 
     echo ""
-    blue "# build ${prefix}_nvidia-cuda$CUDAV-cudnn$CUDNNV-devel-ros-base-realsense-ubuntu$UBUNTUV"
-    #pushd $DIR/../  ## this is not good, because docker build context is too big
+    blue "# build $IMAGE_TAG_PREFIX-ros-core"
+    pushd $DIR/docker_images/ros/$ROS_DISTRO/ubuntu/$UBUNTU_DISTRO/ros-core/
+
+    sed s=FROM.*=FROM\ $FROM_IMAGE= Dockerfile > Dockerfile.temp && \
+        docker build -f Dockerfile.temp -t $IMAGE_TAG_PREFIX-ros-core $option .
+    if [ $? -ne 0 ]; then
+        red "failed to build ros-core"
+        exit
+    fi
+    popd
+
+    echo ""
+    blue "# build $IMAGE_TAG_PREFIX-ros-base"
+    pushd $DIR/docker_images/ros/$ROS_DISTRO/ubuntu/$UBUNTU_DISTRO/ros-base/
+    sed s=FROM.*=FROM\ $IMAGE_TAG_PREFIX-ros-core= Dockerfile > Dockerfile.temp && \
+        docker build -f Dockerfile.temp -t $IMAGE_TAG_PREFIX-ros-base $option .
+    if [ $? -ne 0 ]; then
+        red "failed to build ros-core"
+        exit
+    fi
+    popd
+	
+}
+
+
+function build_ros_realsense_image() {
+    local FROM_IMAGE=$1
+    local IMAGE_TAG_PREFIX=$2
+    local UBUNTUV=$3
+    local UBUNTU_DISTRO=$4
+    local ROS_DISTRO=$5
+
+    build_ros_base_image $FROM_IMAGE $IMAGE_TAG_PREFIX $UBUNTUV $UBUNTU_DISTRO $ROS_DISTRO
+    
+    echo ""
+    blue "# build $IMAGE_TAG_PREFIX-ros-base-realsense"
     pushd $DIR/realsense
-    docker build -t ${prefix}_nvidia-cuda$CUDAV-cudnn$CUDNNV-devel-ros-base-realsense-ubuntu$UBUNTUV \
-        --build-arg from=${prefix}_nvidia-cuda$CUDAV-cudnn$CUDNNV-devel-ros-base-ubuntu$UBUNTUV \
+    docker build -t $IMAGE_TAG_PREFIX-ros-base-realsense \
+        --build-arg from=$IMAGE_TAG_PREFIX-ros-base \
         --build-arg ROS_DISTRO=$ROS_DISTRO \
         --build-arg UBUNTU_DISTRO=$UBUNTU_DISTRO \
         $option \
@@ -293,9 +238,36 @@ if [ $target = "focal" ] || [ $target = "all" ]; then
     UBUNTUV=20.04
     UBUNTU_DISTRO=focal
     ROS_DISTRO=noetic
-    build_cuda_ros_image $CUDAV $CUDNNV $UBUNTUV $UBUNTU_DISTRO $ROS_DISTRO
 
     if [ $gpu = "nvidia" ]; then
-	build_cuda_ros_realsense_image $CUDAV $CUDNNV $UBUNTUV $UBUNTU_DISTRO $ROS_DISTRO
+	build_ros_realsense_image nvidia/cuda:$CUDAV-cudnn$CUDNNV-devel-ubuntu$UBUNTUV \
+			     ${prefix}_nvidia-cuda$CUDAV-cudnn$CUDNNV-devel-ubuntu$UBUNTUV \
+			     $UBUNTUV $UBUNTU_DISTRO $ROS_DISTRO
+    else
+	# for mesa
+	build_ros_base_image ubuntu:$UBUNTU_DISTRO \
+			     ${prefix}_ubuntu$UBUNTUV \
+			     $UBUNTUV $UBUNTU_DISTRO $ROS_DISTRO
+
+	echo ""
+	blue "# build ${prefix}_ubuntu$UBUNTUV-ros-base-mesa"
+	pushd $DIR/mesa
+	docker build -t ${prefix}_ubuntu$UBUNTUV-ros-base-mesa \
+	       --build-arg TZ=$time_zone \
+	       --build-arg FROM_IMAGE=${prefix}_ubuntu$UBUNTUV-ros-base \
+	       $option $debug_nav2 \
+	       .
+	if [ $? -ne 0 ]; then
+	    red "failed to build focal mesa"
+	    exit
+	fi
+	popd
     fi
+fi
+
+if ([ $target = "l4t" ] || [ $target = "all" ]) && [ $gpu = "mesa" ]; then
+    # for l4t (jetson)
+    build_ros_realsense_image "nvcr.io/nvidia/l4t-base:r32.6.1" \
+			      ${prefix}_l4t \
+			      18.04 bionic melodic
 fi

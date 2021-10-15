@@ -115,7 +115,8 @@ if [ $gpu = "nvidia" ]; then
 	fi	
     fi
 else
-    image_l=${prefix}_ros-base-mesa-ubuntu20.04
+    image_l=${prefix}_ubuntu20.04-ros-base-mesa
+    image_p=${prefix}_l4t-ros-base-realsense
 fi
 
 
@@ -226,23 +227,21 @@ if [ $target = "localization" ] || [ $target = "all" ]; then
 fi
 
 
-if [ $gpu = "nvidia" ]; then
-    if [ $target = "people" ] || [ $target = "all" ]; then
-	docker-compose -p ${prefix} build \
-		       --build-arg FROM_IMAGE=$image_p \
-		       --build-arg UID=$UID \
-		       --build-arg TZ=$time_zone \
-		       $option \
-		       people
-	if [ $? != 0 ]; then
-	    red "Got an error to build people"
-	    exit
-	fi
-	docker-compose -p ${prefix} run people /launch.sh build
-	if [ $? != 0 ]; then
-	    red "Got an error to build people ws"
-	    exit
-	fi
+if [ $target = "people" ] || [ $target = "all" ]; then
+    docker-compose -p ${prefix} build \
+		   --build-arg FROM_IMAGE=$image_p \
+		   --build-arg UID=$UID \
+		   --build-arg TZ=$time_zone \
+		   $option \
+		   people
+    if [ $? != 0 ]; then
+	red "Got an error to build people"
+	exit
+    fi
+    docker-compose -p ${prefix} run people /launch.sh build
+    if [ $? != 0 ]; then
+	red "Got an error to build people ws"
+	exit
     fi
 fi
 
