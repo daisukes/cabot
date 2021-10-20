@@ -22,15 +22,16 @@ PC|ZOTAC Magnus EN72070V
 
 ### Tested Environment
 
-- Host Ubuntu 16.04 / 20.04
-- Docker v19
-- docker-compose v1.25
-- Docker containers
-  - `ros1`: Ubuntu18.04, ROS1 melodic
-  - `ros2`: Ubuntu20.04, ROS2 foxy
-  - `bridge`: Ubuntu20.04, ROS1 noetic, ROS2 foxy
-  - `localization`: Ubuntu16.04, ROS1 kinetic
+- Host Ubuntu 20.04
+- Docker v20
+- docker-compose v1.29.2
+- Docker compose services
+  - `ros1`: Ubuntu20.04, ROS1 noetic
+  - `ros2`: Ubuntu20.04, ROS2 galactic
+  - `bridge`: Ubuntu20.04, ROS1 noetic, ROS2 galactic
+  - `localization`: Ubuntu20.04, ROS1 noetic
   - `people`: Ubuntu20.04, ROS1 noetic
+  - `people-jetson`: Ubuntu18.04, ROS1 melodic, Jetson
 
 ## Setup
 
@@ -43,18 +44,35 @@ tools/setup-thirdparty-repos.sh
 ```
 cd tools
 ./install-docker.sh                # if you need docker
+./install-arm-emulator.sh          # if you use Jetson
+./install-host-ros.sh              # if you watch system performance
+./install-realsense-udev-rules.sh  # if you use realsense camera
 ./setup-display.sh                 # for display connections from docker containers
 ./setup-usb.sh                     # if you run physical robot
 ./setup-bluez-xenial.sh            # if your host is Ubuntu16.04, update bluez version
 ./setup-model.sh                   # if you need to recognize people
-./install-realsense-udev-rules.sh  # if you use realsense camera
 ```
+
+## Build Docker Images
 - build docker containers
 ```
 cd docker
-./prebuild-docker.sh
-./build-docker.sh
+./prebuild-docker.sh [-p <project-name>] [-g nvidia|mesa] [<targer>]
+./build-docker.sh [-p <project-name>] [-g nvidia|mesa] [-P] [<target>]
+
+# -p set project-name, default=docker(parent dir name), for multiple cabot branch
+# -g set gpu type (nvidia - run everything on a PC, mesa - run people on a Jetson, others on a PC)
+# -P run prebuild-docker.sh before build
+# -h see all options
+
+ex)
+./build-docker.sh -p nvidia -g vidia -P           # for build all images for PC with nVIDIA gpu
+./build-docker.sh -p mesa -g mesa -P              # for build all images for PC with mesa/OpenGL compatible gpu (i.e. Intel, AMD gpu)
+./prebuild-docker.sh l4t && ./build-docker.sh l4t # for build image for Jetson (only people)
+
 ```
+
+## Launch
 - prepare docker/.env file
   - set your host computer's IP
 - run containers. This will show up Rviz. 

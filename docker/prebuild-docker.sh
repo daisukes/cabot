@@ -265,8 +265,9 @@ if [ $target = "focal" ] || [ $target = "all" ]; then
     fi
 fi
 
-if ([ $target = "l4t" ] || [ $target = "all" ]) && [ $gpu = "mesa" ]; then
+if [ $target = "l4t" ]; then
     # for l4t (jetson)
+    export DOCKER_BUILDKIT=0
     build_ros_realsense_image "nvcr.io/nvidia/l4t-base:r32.6.1" \
 			      ${prefix}_l4t \
 			      18.04 bionic melodic

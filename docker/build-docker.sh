@@ -228,21 +228,33 @@ fi
 
 
 if [ $target = "people" ] || [ $target = "all" ]; then
+    if [ $gpu = "nvidia" ]; then
+	docker-compose -p ${prefix} build \
+		       --build-arg FROM_IMAGE=$image_p \
+		       --build-arg UID=$UID \
+		       --build-arg TZ=$time_zone \
+		       $option \
+		       people
+	if [ $? != 0 ]; then
+	    red "Got an error to build people"
+	    exit
+	fi
+	docker-compose -p ${prefix} run people /launch.sh build
+	if [ $? != 0 ]; then
+	    red "Got an error to build people ws"
+	    exit
+	fi
+    fi
+fi
+
+if [ $target = "l4t" ]; then
+    export DOCKER_BUILDKIT=0
     docker-compose -p ${prefix} build \
 		   --build-arg FROM_IMAGE=$image_p \
 		   --build-arg UID=$UID \
 		   --build-arg TZ=$time_zone \
 		   $option \
-		   people
-    if [ $? != 0 ]; then
-	red "Got an error to build people"
-	exit
-    fi
-    docker-compose -p ${prefix} run people /launch.sh build
-    if [ $? != 0 ]; then
-	red "Got an error to build people ws"
-	exit
-    fi
+		   people-jetson
 fi
 
 
