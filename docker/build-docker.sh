@@ -99,8 +99,12 @@ if [ $prebuild -eq 1 ]; then
 fi
 
 if [ $gpu = "nvidia" ]; then
-    image_l=${prefix}_nvidia-cuda11.1-cudnn8-devel-ros-base-ubuntu20.04
-    image_p=${prefix}_nvidia-cuda11.1-cudnn8-devel-ros-base-realsense-ubuntu20.04
+    if [ ! -z `which tegrastats` ]; then
+        image_p=${prefix}_l4t-ros-base-realsense
+    else
+        image_l=${prefix}_nvidia-cuda11.1-cudnn8-devel-ros-base-ubuntu20.04
+        image_p=${prefix}_nvidia-cuda11.1-cudnn8-devel-ros-base-realsense-ubuntu20.04
+    fi
     if [ $target = "people" ] || [ $target = "all" ]; then
 	if [ `docker images | grep $image_p | wc -l` = 0 ]; then
 	    red "You are trying to build with CUDA$CUDAV, but cannot find the corresponding images"
@@ -255,6 +259,11 @@ if [ $target = "l4t" ]; then
 		   --build-arg TZ=$time_zone \
 		   $option \
 		   people-jetson
+    docker-compose -p ${prefix} run people-jetson /launch.sh build
+    if [ $? != 0 ]; then
+        red "Got an error to build people-jetson ws"
+	exit
+    fi
 fi
 
 

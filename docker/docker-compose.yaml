@@ -298,10 +298,9 @@ services:
       - ../track_people_py:/home/developer/people_ws/src/track_people_py
       - ../queue_utils_py:/home/developer/people_ws/src/queue_utils_py
       - ../docker/bridge/ros1/queue_msgs:/home/developer/people_ws/src/queue_msgs
-      - ./thirdparty/people/people_msgs:/home/developer/people_ws/src/people_msgs
     privileged: true
-    devices:
-      - /dev/dri
+#    devices:
+#      - /dev/dri
     cap_add:
       - SYS_ADMIN
       - NET_ADMIN
@@ -309,11 +308,12 @@ services:
     tty: true
     stdin_open: true
     command: ["/launch.sh",
-              "-s",                                # gazebo
+#              "-s",                                # gazebo
               "-T ${CABOT_SITE:-cabot_site_cmu_3d}", # cabot site
-              #"-r",                                # realsense physicial (-s or -r)
+              "-r",                                # realsense physicial (-s or -r)
               "-q",                                # queue
               #"-p",                                # people topic is simulation groundtruth
               "-C",                                # check required before launch
+              "-t",                                # publish tf
               #"-O",                                # no rviz
               ]

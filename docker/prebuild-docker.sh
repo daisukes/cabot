@@ -115,9 +115,13 @@ if [ $gpu = "nvidia" ]; then
             exit
 	fi
     else
-	red "NVIDIA driver is not found by nvidia-smi command"
-	red "If you don't have NVIDIA GPU, please run '$0 -g mesa'"
-	exit
+	if [ ! -z `which tegrastats` ]; then
+	    gpu=tegra
+	else
+	    red "NVIDIA driver is not found by nvidia-smi command"
+	    red "If you don't have NVIDIA GPU, please run '$0 -g mesa'"
+	    exit
+	fi
     fi
     blue "CUDA Vesrion: $CUDAV"
     blue "cudnn Vesrion: $CUDNNV"
