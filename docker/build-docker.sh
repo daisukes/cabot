@@ -100,7 +100,7 @@ fi
 
 if [ $gpu = "nvidia" ]; then
     if [ ! -z `which tegrastats` ]; then
-        image_p=${prefix}_l4t-ros-base-realsense
+        image_p=${prefix}_l4t-ros-desktop-realsense
     else
         image_l=${prefix}_nvidia-cuda11.1-cudnn8-devel-ros-base-ubuntu20.04
         image_p=${prefix}_nvidia-cuda11.1-cudnn8-devel-ros-base-realsense-ubuntu20.04
@@ -118,9 +118,9 @@ if [ $gpu = "nvidia" ]; then
 	    exit
 	fi	
     fi
-else
+else 
     image_l=${prefix}_ubuntu20.04-ros-base-mesa
-    image_p=${prefix}_l4t-ros-base-realsense
+    image_p=${prefix}_l4t-ros-desktop-realsense
 fi
 
 

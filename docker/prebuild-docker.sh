@@ -272,7 +272,33 @@ fi
 if [ $target = "l4t" ]; then
     # for l4t (jetson)
     export DOCKER_BUILDKIT=0
-    build_ros_realsense_image "nvcr.io/nvidia/l4t-base:r32.6.1" \
-			      ${prefix}_l4t \
-			      18.04 bionic melodic
+    L4T_IMAGE="nvcr.io/nvidia/l4t-base:r32.6.1"
+    
+    echo ""
+    blue "# build ${prefix}_l4t-ros-desktop"
+    pushd $DIR/jetson-melodic-desktop-python3-src
+    docker build -t ${prefix}_l4t-ros-desktop \
+	   --build-arg from=$L4T_IMAGE \
+	   $option \
+	   .
+    if [ $? -ne 0 ]; then
+	red "failed to build ${prefix}_l4t-ros-desktop"
+	exit
+    fi
+    popd
+    
+    
+    echo ""
+    blue "# build ${prefix}_l4t-ros-desktop-realsense"
+    pushd $DIR/jetson-realsense
+    docker build -t ${prefix}_l4t-ros-desktop-realsense \
+	   --build-arg from=${prefix}_l4t-ros-desktop \
+	   $option \
+	   .
+    if [ $? -ne 0 ]; then
+	red "failed to build ${prefix}_l4t-ros-desktop-realsense"
+	exit
+    fi
+    popd
+
 fi
