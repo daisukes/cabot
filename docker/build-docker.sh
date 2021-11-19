@@ -102,8 +102,8 @@ if [ $gpu = "nvidia" ]; then
     if [ ! -z `which tegrastats` ]; then
         image_p=${prefix}_l4t-ros-desktop-realsense
     else
-        image_l=${prefix}_nvidia-cuda11.1-cudnn8-devel-ros-base-ubuntu20.04
-        image_p=${prefix}_nvidia-cuda11.1-cudnn8-devel-ros-base-realsense-ubuntu20.04
+        image_l=${prefix}_nvidia-cuda11.1-cudnn8-devel-ubuntu20.04-ros-base
+        image_p=${prefix}_nvidia-cuda11.1-cudnn8-devel-ubuntu20.04-ros-base-realsense
     fi
     if [ $target = "people" ] || [ $target = "all" ]; then
 	if [ `docker images | grep $image_p | wc -l` = 0 ]; then
