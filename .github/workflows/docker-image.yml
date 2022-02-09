@@ -1,0 +1,24 @@
+name: Docker Image CI
+
+on:
+  push:
+    branches: [ dev ]
+  pull_request:
+    branches: [ dev ]
+
+jobs:
+
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Prepare vcstool
+      run: pip3 install vcstool
+    - name: Prepare thirdparty repos
+      run: tools/setup-thirdparty-repos.sh
+    - name: Prebuild images
+      run: ./prebuild-docker.sh -g mesa
+    - name: Build images
+      run: ./build-docker.sh -g mesa
