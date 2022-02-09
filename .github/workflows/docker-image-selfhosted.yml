@@ -1,0 +1,22 @@
+name: Docker Image CI
+
+on:
+  push:
+    branches: [ dev ]
+  pull_request:
+    branches: [ dev ]
+
+jobs:
+
+  build:
+
+    runs-on: [self-hosted, cml, gpu]
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Build the Docker image
+      run: |
+        echo "\`\`\`" > report.md
+        nvidia-smi >> report.md
+        echo "\`\`\`" >> report.md
+        cml-send-comment report.md
