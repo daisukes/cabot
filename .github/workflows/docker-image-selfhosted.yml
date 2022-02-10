@@ -14,9 +14,11 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
-    - name: Build the Docker image
-      run: |
-        echo "\`\`\`" > report.md
-        nvidia-smi >> report.md
-        echo "\`\`\`" >> report.md
-        cml-send-comment report.md
+    - name: Prepare vcstool
+      run: pip3 install vcstool
+    - name: Prepare thirdparty repos
+      run: tools/setup-thirdparty-repos.sh
+    - name: Prebuild images
+      run: ./prebuild-docker.sh
+    - name: Build images
+      run: ./build-docker.sh
